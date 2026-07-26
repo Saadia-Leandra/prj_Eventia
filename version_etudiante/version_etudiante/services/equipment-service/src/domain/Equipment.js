@@ -15,4 +15,30 @@
  * Ne placez ici aucune logique MongoDB, Express ou Axios.
  */
 export default class Equipment {
+  constructor({ name, category, dailyPrice, availableQuantity } = {}) {
+    this.name = typeof name === "string" ? name.trim() : "";
+    this.category = typeof category === "string" ? category.trim() : "";
+    this.dailyPrice = Number(dailyPrice);
+    this.availableQuantity = Number(availableQuantity);
+  }
+  validate() {
+    const errors = [];
+    if (!this.name) errors.push("Le nom est obligatoire.");
+    if (!this.category) errors.push("La catégorie est obligatoire.");
+    if (!Number.isFinite(this.dailyPrice) || this.dailyPrice < 0) errors.push("Le prix quotidien doit être positif ou nul.");
+    if (!Number.isInteger(this.availableQuantity) || this.availableQuantity < 0) errors.push("La quantité disponible doit être un entier positif ou nul.");
+    return errors;
+  }
+  canReserve(quantity) {
+    const requested = Number(quantity);
+    return Number.isInteger(requested) && requested >= 1 && requested <= this.availableQuantity;
+  }
+  toObject() {
+    return {
+      name: this.name,
+      category: this.category,
+      dailyPrice: this.dailyPrice,
+      availableQuantity: this.availableQuantity,
+    };
+  }
 }
