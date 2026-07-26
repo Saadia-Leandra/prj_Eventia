@@ -19,9 +19,22 @@ export function createApp() {
   return app;
 }
 
+async function seedInitialEquipment() {
+  const count = await EquipmentModel.estimatedDocumentCount();
+  if (count === 0) {
+    await EquipmentModel.create([
+      { name: "Projecteur", category: "Audio/Visuel", dailyPrice: 35, availableQuantity: 5 },
+      { name: "Chaises pliantes", category: "Mobilier", dailyPrice: 3, availableQuantity: 50 },
+      { name: "Enceinte portable", category: "Audio", dailyPrice: 20, availableQuantity: 10 },
+    ]);
+    console.log("equipment-service : catalogue de matériel initial créé.");
+  }
+}
+
 export async function start() {
   const port = Number(process.env.PORT || 4002);
   await mongoose.connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/eventia_equipments");
+  await seedInitialEquipment();
   return createApp().listen(port, () => console.log(`equipment-service sur le port ${port}`));
 }
 

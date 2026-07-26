@@ -13,5 +13,26 @@
  *
  * Cette classe ne doit pas manipuler directement Express ou Mongoose.
  */
+import Notification from "./Notification.js";
+import { AppError } from "../errors.js";
+
 export default class NotificationService {
+  constructor(repository) {
+    this.repository = repository;
+  }
+
+  list() {
+    return this.repository.findAll();
+  }
+
+  get(id) {
+    return this.repository.findById(id);
+  }
+
+  create(input) {
+    const notification = new Notification(input);
+    const errors = notification.validate();
+    if (errors.length) throw new AppError(400, errors.join(" "));
+    return this.repository.create(notification.toObject());
+  }
 }

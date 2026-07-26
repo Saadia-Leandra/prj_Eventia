@@ -52,3 +52,71 @@ test("ReservationService restitue le stock si la persistance échoue", async () 
   }), /MongoDB indisponible/);
   assert.deepEqual(equipmentCalls.map((call) => call.url), ["/equipment/reserve", "/equipment/release"]);
 });
+
+test("ReservationService conserve la réservation même si le service de notification échoue", async () => {
+  const equipmentCalls = [];
+  const repository = {
+    create: async (data) => ({ _id: "reservation", ...data }),
+  };
+  const service = new ReservationService(repository, {
+    clientsApi: api({ name: "Alice", email: "alice@example.com" }, []),
+    equipmentApi: {
+      get: async () => ({ data: { name: "Projecteur", dailyPrice: 20 } }),
+      put: async (url, body) => { equipmentCalls.push({ url, body }); return { data: {} }; },
+    },
+    notificationsApi: {
+      post: async () => {
+        const error = new Error("Notification indisponible");
+        error.response = { status: 502, data: { message: "Impossible d'enregistrer la notification." } };
+        throw error;
+      },
+    },
+  });
+
+  const result = await service.create({
+    clientId: "client", equipmentId: "equipment", quantity: 2,
+    startDate: "2026-07-10", endDate: "2026-07-11",
+  });
+
+  assert.equal(result.totalPrice, 80);
+  assert.deepEqual(equipmentCalls.map((call) => call.url), ["/equipment/reserve"]);
+});
+
+test("ReservationService annule même si le service de notification échoue", async () => {
+  const service = new ReservationService(
+    {
+      findById: async () => ({
+        _id: "reservation",
+        equipmentId: "equipment",
+        quantity: 1,
+        equipmentName: "Projecteur",
+        clientEmail: "alice@example.com",
+        clientName: "Alice",
+        status: "CONFIRMED",
+      }),
+      cancelConfirmed: async () => ({
+        _id: "reservation",
+        equipmentId: "equipment",
+        quantity: 1,
+        equipmentName: "Projecteur",
+        clientEmail: "alice@example.com",
+        clientName: "Alice",
+        status: "CANCELLED",
+      }),
+      restoreConfirmed: async () => ({ status: "CONFIRMED" }),
+      delete: async () => undefined,
+    },
+    {
+      clientsApi: api({}, []),
+      equipmentApi: {
+        put: async () => ({ data: {} }),
+      },
+      notificationsApi: {
+        post: async () => { throw new Error("Notification indisponible"); },
+      },
+    },
+  );
+
+  const result = await service.cancel("reservation");
+  assert.equal(result.status, "CANCELLED");
+});

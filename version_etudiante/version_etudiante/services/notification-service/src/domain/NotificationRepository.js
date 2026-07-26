@@ -14,4 +14,19 @@
  * Elle ne doit contenir aucune règle de validation métier.
  */
 export default class NotificationRepository {
+  constructor(model) {
+    this.model = model;
+  }
+
+  findAll() {
+    return this.model.find().sort({ createdAt: -1 }).lean();
+  }
+
+  findById(id) {
+    return this.model.findById(id).lean();
+  }
+
+  create(data) {
+    return this.model.create(data);
+  }
 }

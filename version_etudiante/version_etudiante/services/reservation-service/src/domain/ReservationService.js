@@ -36,13 +36,18 @@ export default class ReservationService {
     let saved;
     try {
       saved = await this.repository.create(reservation.toObject());
-      await this.#notify(client.email, `Réservation confirmée pour ${reservation.equipmentName}.`, "RESERVATION_CONFIRMED");
-      return saved;
     } catch (error) {
-      if (saved?._id) await this.repository.delete(saved._id).catch(() => undefined);
       await this.equipmentApi.put(`/${reservation.equipmentId}/release`, { quantity: reservation.quantity }).catch(() => undefined);
       throw error;
     }
+
+    try {
+      await this.#notify(client.email, `Réservation confirmée pour ${reservation.equipmentName}.`, "RESERVATION_CONFIRMED");
+    } catch (error) {
+      console.error("Notification non livrée pour la réservation :", error.message || error);
+    }
+
+    return saved;
   }
   async cancel(id) {
     const current = await this.repository.findById(id);
@@ -60,11 +65,15 @@ export default class ReservationService {
       await this.repository.restoreConfirmed(id);
       throw error;
     }
-    await this.#notify(
-      cancelled.clientEmail || cancelled.clientName,
-      `Réservation annulée pour ${cancelled.equipmentName}.`,
-      "RESERVATION_CANCELLED",
-    );
+    try {
+      await this.#notify(
+        cancelled.clientEmail || cancelled.clientName,
+        `Réservation annulée pour ${cancelled.equipmentName}.`,
+        "RESERVATION_CANCELLED",
+      );
+    } catch (error) {
+      console.error("Notification non livrée pour l'annulation :", error.message || error);
+    }
     return cancelled;
   }
   async delete(id) {

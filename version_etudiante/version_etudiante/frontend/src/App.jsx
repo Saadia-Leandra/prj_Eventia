@@ -52,7 +52,22 @@ export default function App() {
     </Panel>}
 
     {tab === "reservations" && <Panel title="Réservations">
-      <form onSubmit={addReservation}><select value={reservationForm.clientId} onChange={e=>setReservationForm({...reservationForm,clientId:e.target.value})} required><option value="">Client</option>{clients.map(c=><option key={c._id} value={c._id}>{c.name}</option>)}</select><select value={reservationForm.equipmentId} onChange={e=>setReservationForm({...reservationForm,equipmentId:e.target.value})} required><option value="">Matériel</option>{equipments.map(x=><option key={x._id} value={x._id}>{x.name}</option>)}</select><input type="number" min="1" value={reservationForm.quantity} onChange={e=>setReservationForm({...reservationForm,quantity:e.target.value})}/><input type="date" value={reservationForm.startDate} onChange={e=>setReservationForm({...reservationForm,startDate:e.target.value})} required/><input type="date" value={reservationForm.endDate} onChange={e=>setReservationForm({...reservationForm,endDate:e.target.value})} required/><button>Réserver</button></form>
+      <form onSubmit={addReservation}>
+        <select value={reservationForm.clientId} onChange={e=>setReservationForm({...reservationForm,clientId:e.target.value})} required>
+          <option value="">Client</option>
+          {clients.map(c=><option key={c._id} value={c._id}>{c.name}</option>)}
+        </select>
+        <select value={reservationForm.equipmentId} onChange={e=>setReservationForm({...reservationForm,equipmentId:e.target.value})} required>
+          <option value="">Matériel</option>
+          {equipments.length === 0
+            ? <option value="" disabled>Aucun matériel disponible</option>
+            : equipments.map(x=><option key={x._id} value={x._id}>{x.name}</option>)}
+        </select>
+        <input type="number" min="1" value={reservationForm.quantity} onChange={e=>setReservationForm({...reservationForm,quantity:e.target.value})}/>
+        <input type="date" value={reservationForm.startDate} onChange={e=>setReservationForm({...reservationForm,startDate:e.target.value})} required/>
+        <input type="date" value={reservationForm.endDate} onChange={e=>setReservationForm({...reservationForm,endDate:e.target.value})} required/>
+        <button>Réserver</button>
+      </form>
       <table><thead><tr><th>Client</th><th>Matériel</th><th>Dates</th><th>Total</th><th>Statut</th><th></th></tr></thead><tbody>{reservations.map(r=><tr key={r._id}><td>{r.clientName}</td><td>{r.equipmentName} × {r.quantity}</td><td>{String(r.startDate).slice(0,10)} → {String(r.endDate).slice(0,10)}</td><td>{r.totalPrice} $</td><td>{r.status}</td><td>{r.status === "CONFIRMED" && <button onClick={()=>cancelReservation(r._id)}>Annuler</button>}</td></tr>)}</tbody></table>
     </Panel>}
 
