@@ -1,18 +1,17 @@
-/**
- * Assure l’accès aux réservations stockées dans MongoDB.
- *
- * Cette classe encapsule le modèle Mongoose et fournit les opérations de
- * persistance nécessaires à la création, la consultation et la modification
- * de l’état d’une réservation.
- *
- * Travail demandé :
- * - conserver le modèle Mongoose reçu.
- * - récupérer les réservations dans un ordre utile.
- * - retrouver une réservation précise.
- * - enregistrer une nouvelle réservation.
- * - modifier une réservation existante et retourner sa nouvelle version.
- *
- * Les appels aux autres microservices ne doivent pas être placés ici.
- */
 export default class ReservationRepository {
+  constructor(model) { this.model = model; }
+  findAll() { return this.model.find().sort({ createdAt: -1 }).lean(); }
+  findById(id) { return this.model.findById(id).lean(); }
+  create(data) { return this.model.create(data); }
+  delete(id) { return this.model.findByIdAndDelete(id).lean(); }
+  cancelConfirmed(id) {
+    return this.model.findOneAndUpdate(
+      { _id: id, status: "CONFIRMED" },
+      { $set: { status: "CANCELLED" } },
+      { new: true, runValidators: true },
+    ).lean();
+  }
+  restoreConfirmed(id) {
+    return this.model.findByIdAndUpdate(id, { $set: { status: "CONFIRMED" } }, { new: true }).lean();
+  }
 }
