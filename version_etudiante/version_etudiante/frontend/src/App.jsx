@@ -17,6 +17,8 @@ export default function App() {
   const [clientForm, setClientForm] = useState(emptyClient);
   const [equipmentForm, setEquipmentForm] = useState(emptyEquipment);
   const [reservationForm, setReservationForm] = useState(emptyReservation);
+  const [editingClientId, setEditingClientId] = useState(null);
+  const [editingEquipmentId, setEditingEquipmentId] = useState(null);
   const [error, setError] = useState("");
 
   const load = async () => {
@@ -30,8 +32,52 @@ export default function App() {
   };
   useEffect(() => { load(); }, []);
 
-  async function addClient(e) { e.preventDefault(); try { await clientsApi.post("/", clientForm); setClientForm(emptyClient); load(); } catch (err) { setError(err.response?.data?.message || "Erreur client"); } }
-  async function addEquipment(e) { e.preventDefault(); try { await equipmentApi.post("/", {...equipmentForm, dailyPrice:Number(equipmentForm.dailyPrice), availableQuantity:Number(equipmentForm.availableQuantity)}); setEquipmentForm(emptyEquipment); load(); } catch (err) { setError(err.response?.data?.message || "Erreur matériel"); } }
+  async function saveClient(e) {
+    e.preventDefault();
+    try {
+      if (editingClientId) await clientsApi.put(`/${editingClientId}`, clientForm);
+      else await clientsApi.post("/", clientForm);
+      cancelClientEdit();
+      await load();
+    } catch (err) { setError(err.response?.data?.message || "Erreur client"); }
+  }
+  function editClient(client) {
+    setEditingClientId(client._id);
+    setClientForm({ name: client.name, email: client.email, phone: client.phone });
+    setError("");
+  }
+  function cancelClientEdit() {
+    setEditingClientId(null);
+    setClientForm(emptyClient);
+  }
+  async function saveEquipment(e) {
+    e.preventDefault();
+    const payload = {
+      ...equipmentForm,
+      dailyPrice: Number(equipmentForm.dailyPrice),
+      availableQuantity: Number(equipmentForm.availableQuantity)
+    };
+    try {
+      if (editingEquipmentId) await equipmentApi.put(`/${editingEquipmentId}`, payload);
+      else await equipmentApi.post("/", payload);
+      cancelEquipmentEdit();
+      await load();
+    } catch (err) { setError(err.response?.data?.message || "Erreur matériel"); }
+  }
+  function editEquipment(equipment) {
+    setEditingEquipmentId(equipment._id);
+    setEquipmentForm({
+      name: equipment.name,
+      category: equipment.category,
+      dailyPrice: equipment.dailyPrice,
+      availableQuantity: equipment.availableQuantity
+    });
+    setError("");
+  }
+  function cancelEquipmentEdit() {
+    setEditingEquipmentId(null);
+    setEquipmentForm(emptyEquipment);
+  }
   async function addReservation(e) { e.preventDefault(); try { await reservationsApi.post("/", {...reservationForm, quantity:Number(reservationForm.quantity)}); setReservationForm(emptyReservation); load(); } catch (err) { setError(err.response?.data?.message || "Erreur réservation"); } }
   async function remove(api, id) { if (!confirm("Confirmer la suppression?")) return; try { await api.delete(`/${id}`); load(); } catch (err) { setError(err.response?.data?.message || "Suppression impossible"); } }
   async function cancelReservation(id) { try { await reservationsApi.patch(`/${id}/cancel`); load(); } catch (err) { setError(err.response?.data?.message || "Annulation impossible"); } }
@@ -42,13 +88,13 @@ export default function App() {
     <ErrorBox message={error}/>
 
     {tab === "clients" && <Panel title="Clients">
-      <form onSubmit={addClient}><input placeholder="Nom" value={clientForm.name} onChange={e=>setClientForm({...clientForm,name:e.target.value})} required/><input type="email" placeholder="Courriel" value={clientForm.email} onChange={e=>setClientForm({...clientForm,email:e.target.value})} required/><input placeholder="Téléphone" value={clientForm.phone} onChange={e=>setClientForm({...clientForm,phone:e.target.value})} required/><button>Ajouter</button></form>
-      <table><thead><tr><th>Nom</th><th>Courriel</th><th>Téléphone</th><th></th></tr></thead><tbody>{clients.map(c=><tr key={c._id}><td>{c.name}</td><td>{c.email}</td><td>{c.phone}</td><td><button className="danger" onClick={()=>remove(clientsApi,c._id)}>Supprimer</button></td></tr>)}</tbody></table>
+      <form onSubmit={saveClient}><input placeholder="Nom" value={clientForm.name} onChange={e=>setClientForm({...clientForm,name:e.target.value})} required/><input type="email" placeholder="Courriel" value={clientForm.email} onChange={e=>setClientForm({...clientForm,email:e.target.value})} required/><input placeholder="Téléphone" value={clientForm.phone} onChange={e=>setClientForm({...clientForm,phone:e.target.value})} required/><button>{editingClientId ? "Enregistrer" : "Ajouter"}</button>{editingClientId && <button type="button" className="secondary" onClick={cancelClientEdit}>Annuler</button>}</form>
+      <table><thead><tr><th>Nom</th><th>Courriel</th><th>Téléphone</th><th></th></tr></thead><tbody>{clients.map(c=><tr key={c._id}><td>{c.name}</td><td>{c.email}</td><td>{c.phone}</td><td className="actions"><button onClick={()=>editClient(c)}>Modifier</button><button className="danger" onClick={()=>remove(clientsApi,c._id)}>Supprimer</button></td></tr>)}</tbody></table>
     </Panel>}
 
     {tab === "materiel" && <Panel title="Matériel">
-      <form onSubmit={addEquipment}><input placeholder="Nom" value={equipmentForm.name} onChange={e=>setEquipmentForm({...equipmentForm,name:e.target.value})} required/><input placeholder="Catégorie" value={equipmentForm.category} onChange={e=>setEquipmentForm({...equipmentForm,category:e.target.value})} required/><input type="number" min="0" placeholder="Prix/jour" value={equipmentForm.dailyPrice} onChange={e=>setEquipmentForm({...equipmentForm,dailyPrice:e.target.value})} required/><input type="number" min="0" placeholder="Quantité" value={equipmentForm.availableQuantity} onChange={e=>setEquipmentForm({...equipmentForm,availableQuantity:e.target.value})} required/><button>Ajouter</button></form>
-      <table><thead><tr><th>Nom</th><th>Catégorie</th><th>Prix/jour</th><th>Disponible</th><th></th></tr></thead><tbody>{equipments.map(x=><tr key={x._id}><td>{x.name}</td><td>{x.category}</td><td>{x.dailyPrice} $</td><td>{x.availableQuantity}</td><td><button className="danger" onClick={()=>remove(equipmentApi,x._id)}>Supprimer</button></td></tr>)}</tbody></table>
+      <form onSubmit={saveEquipment}><input placeholder="Nom" value={equipmentForm.name} onChange={e=>setEquipmentForm({...equipmentForm,name:e.target.value})} required/><input placeholder="Catégorie" value={equipmentForm.category} onChange={e=>setEquipmentForm({...equipmentForm,category:e.target.value})} required/><input type="number" min="0" placeholder="Prix/jour" value={equipmentForm.dailyPrice} onChange={e=>setEquipmentForm({...equipmentForm,dailyPrice:e.target.value})} required/><input type="number" min="0" placeholder="Quantité" value={equipmentForm.availableQuantity} onChange={e=>setEquipmentForm({...equipmentForm,availableQuantity:e.target.value})} required/><button>{editingEquipmentId ? "Enregistrer" : "Ajouter"}</button>{editingEquipmentId && <button type="button" className="secondary" onClick={cancelEquipmentEdit}>Annuler</button>}</form>
+      <table><thead><tr><th>Nom</th><th>Catégorie</th><th>Prix/jour</th><th>Disponible</th><th></th></tr></thead><tbody>{equipments.map(x=><tr key={x._id}><td>{x.name}</td><td>{x.category}</td><td>{x.dailyPrice} $</td><td>{x.availableQuantity}</td><td className="actions"><button onClick={()=>editEquipment(x)}>Modifier</button><button className="danger" onClick={()=>remove(equipmentApi,x._id)}>Supprimer</button></td></tr>)}</tbody></table>
     </Panel>}
 
     {tab === "reservations" && <Panel title="Réservations">
